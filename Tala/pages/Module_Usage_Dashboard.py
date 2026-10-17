@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import sys, os
+from pathlib import Path
 
 from utils import (
     apply_plotly_theme,
@@ -28,7 +29,7 @@ data = pd.DataFrame({
     "Sales": [120, 180, 150]
 })
 
-sample_data = pd.read_csv("data/sample_module_user_list.csv")
+sample_data = pd.read_csv(Path(__file__).parent.parent / "data" / "sample_module_user_list.csv")
 
 
 ####

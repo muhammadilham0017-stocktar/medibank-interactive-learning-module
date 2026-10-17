@@ -167,9 +167,9 @@ st.markdown(
 
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("students have viewed the module.", total, border=True, help="This refers to logging into the module at least once.")
-m2.metric("of students have accessed all cards.", completion_rate, format="percent", border=True)
-m3.metric("of students have answered all questions correctly in the Myth v.s Fact knowledge quiz.", quiz_perfect_rate, format="percent", border=True)
-m4.metric("**of students have fully completed the module.**", full_completion_rate, format="percent", border=True, help="This refers to getting all questions correct and accessing all cards in the module.")
+m2.metric("of students have accessed all cards.", f"{completion_rate*100:.0f}%", border=True)
+m3.metric("of students have answered all questions correctly in the Myth v.s Fact knowledge quiz.", f"{quiz_perfect_rate*100:.0f}%", border=True)
+m4.metric("**of students have fully completed the module.**", f"{full_completion_rate*100:.0f}%", border=True, help="This refers to getting all questions correct and accessing all cards in the module.")
 
 
 ####

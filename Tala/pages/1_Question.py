@@ -222,9 +222,9 @@ with welcome_area:
         )
     with dash_col:
         if auth.is_admin():
-            if st.button("Chatbot Insights", key="to_chatbot_dashboard", use_container_width=True):
+            if st.button("Module Dashboard", key="to_module_dashboard", use_container_width=True):
                 st.switch_page(auth.MODULE_DASHBOARD_PAGE)
-            if st.button("Module Insights", key="to_module_dashboard", use_container_width=True):
+            if st.button("Admin Dashboard", key="to_admin_dashboard", use_container_width=True):
                 st.switch_page(auth.CHATBOT_DASHBOARD_PAGE)
     with out_col:
         if st.button("Log out", key="log_out"):

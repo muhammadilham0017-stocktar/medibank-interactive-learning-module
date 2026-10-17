@@ -16,9 +16,8 @@ import hmac
 import streamlit as st
 
 LOGIN_PAGE = "oshc_welcome.py"
-# DASHBOARD_PAGE = "pages/Admin_Dashboard.py"
 MODULE_DASHBOARD_PAGE = "pages/Module_Usage_Dashboard.py"
-CHATBOT_DASHBOARD_PAGE = "pages/Chatbot_Usage_Dashboard.py"
+CHATBOT_DASHBOARD_PAGE = "pages/Admin_Dashboard.py"
 DEMO_ADMIN_PASSWORD = "oshcwise-demo"
 
 

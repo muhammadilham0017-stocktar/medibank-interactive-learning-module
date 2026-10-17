@@ -75,7 +75,7 @@ def call_model(prompt):
     client = OpenAI(api_key=_secret("GROQ_API_KEY"),
                     base_url="https://api.groq.com/openai/v1")
     resp = client.chat.completions.create(
-        model=_secret("MODEL", "llama-3.3-70b-versatile"),
+        model=_secret("MODEL", "openai/gpt-oss-120b"),
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
         max_tokens=1200,

@@ -166,10 +166,14 @@ st.markdown(
 )
 
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("students have viewed the module.", total, border=True, help="This refers to logging into the module at least once.")
-m2.metric("of students have accessed all cards.", f"{completion_rate*100:.0f}%", border=True)
-m3.metric("of students have answered all questions correctly in the Myth v.s Fact knowledge quiz.", f"{quiz_perfect_rate*100:.0f}%", border=True)
-m4.metric("**of students have fully completed the module.**", f"{full_completion_rate*100:.0f}%", border=True, help="This refers to getting all questions correct and accessing all cards in the module.")
+m1.metric("Viewed the module", total, border=True,
+          help="Students who logged into the module at least once.")
+m2.metric("Accessed all cards", f"{completion_rate*100:.0f}%", border=True,
+          help="Share of students who opened every card.")
+m3.metric("Perfect quiz score", f"{quiz_perfect_rate*100:.0f}%", border=True,
+          help="Share who answered every Myth vs Fact question correctly.")
+m4.metric("Fully completed", f"{full_completion_rate*100:.0f}%", border=True,
+          help="Share who accessed all cards AND got every quiz question correct.")
 
 
 ####

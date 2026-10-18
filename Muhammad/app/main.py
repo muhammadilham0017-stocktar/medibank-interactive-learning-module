@@ -770,7 +770,20 @@ def page_insights():
               help="The readability gate regenerates anything above this grade.")
     r3.metric("Simplification",
               f"~{round(doc_grade - ANSWER_GATE_GRADE)} grades"
-              if doc_grade is not None else "n/a")
+              if doc_grade is not None else "n/a",
+              help="How much simpler the answers read than the source documents.")
+
+    with st.expander(f"How Grade {doc_grade} is calculated"):
+        st.markdown(
+            "Flesch–Kincaid grade depends on only two things — how long the "
+            "sentences are and how long the words are:")
+        st.latex(r"Grade = 0.39\times\frac{words}{sentences}"
+                 r" + 11.8\times\frac{syllables}{words} - 15.59")
+        st.markdown(
+            "Measured over the full text of the three OSHC documents:\n\n"
+            "- **17,858 words · 795 sentences · 31,093 syllables**\n"
+            "- words ÷ sentences = **22.5**  ·  syllables ÷ word = **1.74**\n"
+            f"- 0.39 × 22.5 + 11.8 × 1.74 − 15.59 = **Grade {doc_grade}**")
     st.divider()
 
     # ---- 5. recommended actions ------------------------------------------

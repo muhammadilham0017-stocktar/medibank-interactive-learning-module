@@ -17,6 +17,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 import auth
+import ask_box                     # Dimi: ask in your language (ML language + meaning models)
+import language_box as lb          # Dimi: translation of the card
 
 
 # ---------- Settings ----------
@@ -74,20 +76,25 @@ auth.require_login()          # students and the admin only
 back_col, title_col = st.columns([1, 5])
 
 with back_col:
-    if st.button("← Back"):
+    if st.button(lb.tr("← Back")):
         st.switch_page(HOME_PAGE)
 
 with title_col:
-    st.markdown("### What happens when you go to hospital")
-    st.caption(
+    st.markdown("### " + lb.tr("What happens when you go to hospital"))
+    st.caption(lb.tr(
         "Follow a student through an emergency department, step by step. "
         "This is general information, not medical advice."
-    )
+    ))
+
+
+# Ask box (Dimi's part): the student types what they need in their own language.
+# ML finds the language (the card changes to it) and the meaning (the student walks to the right step).
+goto = ask_box.render("hospital")
 
 # The guide itself
 if HTML_FILE.exists():
     components.html(
-        build_guide(get_language()),
+        lb.inject(build_guide(get_language()), goto=goto),
         height=GUIDE_HEIGHT,
         scrolling=True,
     )

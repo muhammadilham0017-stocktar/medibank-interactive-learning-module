@@ -28,6 +28,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 import auth
+import ask_box                     # Dimi: ask in your language (ML language + meaning models)
+import language_box as lb          # Dimi: translation of the card
 from PIL import Image
 
 
@@ -176,15 +178,20 @@ auth.require_login()
 back_col, title_col = st.columns([1, 5])
 
 with back_col:
-    if st.button("← Back"):
+    if st.button(lb.tr("← Back")):
         st.switch_page(HOME_PAGE)
 
 with title_col:
-    st.markdown("### When you miss home")
-    st.caption(
+    st.markdown("### " + lb.tr("When you miss home"))
+    st.caption(lb.tr(
         "Six ways to find support. Press Next to turn the wheel. "
         "This is general information, not medical advice."
-    )
+    ))
+
+
+# Ask box (Dimi's part): the student types what they need in their own language.
+# ML finds the language (the card changes to it) and the meaning (the student walks to the right step).
+goto = ask_box.render("homesick")
 
 # Read the PDF (if it fails, the guide still works with built-in text)
 pdf_data = {}
@@ -197,6 +204,18 @@ else:
     st.warning(f"Brochure PDF not found. Put it here: {PDF_FILE}")
 
 if HTML_FILE.exists():
-    components.html(build_guide(get_language(), pdf_data), height=GUIDE_HEIGHT, scrolling=True)
+    components.html(lb.inject(build_guide(get_language(), pdf_data), goto=goto),
+                    height=GUIDE_HEIGHT, scrolling=True)
+
+    # Feel-better activities under the card (Dimi's part): breathing, mood check-in, small wins,
+    # 5-4-3-2-1 grounding and ideas to bring home closer - in the student's language
+    ACTIVITIES_FILE = ASSETS / "homesick_activities.html"
+    ACTIVITIES_TEXT = ASSETS / "homesick_activities.json"
+    if ACTIVITIES_FILE.exists() and ACTIVITIES_TEXT.exists():
+        words = json.loads(ACTIVITIES_TEXT.read_text(encoding="utf-8"))
+        lang = lb.current_language()
+        activities = ACTIVITIES_FILE.read_text(encoding="utf-8").replace("__LANG__", lang).replace(
+            "__TEXT__", quote(json.dumps(words.get(lang, words["en"]), ensure_ascii=False), safe=""))
+        components.html(activities, height=1120, scrolling=True)
 else:
     st.error(f"Can't find the guide file. Put it here: {HTML_FILE}")

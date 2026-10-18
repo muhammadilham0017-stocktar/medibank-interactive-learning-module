@@ -17,7 +17,12 @@ def initdata(data, user):
     return table,row
 
 def edit(data, user,name,value:Done):
-    user = int(user)
+    # Student usernames are numeric ids; the admin login ("Admin") is not a
+    # tracked learner, so skip the progress write instead of crashing on int().
+    try:
+        user = int(user)
+    except (TypeError, ValueError):
+        return
     table,row = initdata(data, user)
     set_cell(table,user,name,value)
     save_data(data,table)

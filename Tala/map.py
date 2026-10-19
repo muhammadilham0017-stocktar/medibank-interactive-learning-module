@@ -5,6 +5,22 @@ from dataentry import add_row, get_data, get_row, save_data, set_cell
 
 Done = Literal[0,1]
 
+# The demo logins use friendly names, but the progress tracker is keyed by a
+# numeric student id. Map the student login to its id; the admin login is not a
+# tracked learner, so it is skipped (see _as_id returning None).
+_DEMO_IDS = {"student": 12345678}
+
+def _as_id(user):
+    """Numeric tracking id for a login, or None when it should not be tracked."""
+    if isinstance(user, str):
+        mapped = _DEMO_IDS.get(user.strip().lower())
+        if mapped is not None:
+            return mapped
+    try:
+        return int(user)
+    except (TypeError, ValueError):
+        return None
+
 def initdata(data, user):
     user = int(user)
     table = get_data(data)
@@ -17,14 +33,11 @@ def initdata(data, user):
     return table,row
 
 def edit(data, user,name,value:Done):
-    # Student usernames are numeric ids; the admin login ("Admin") is not a
-    # tracked learner, so skip the progress write instead of crashing on int().
-    try:
-        user = int(user)
-    except (TypeError, ValueError):
+    uid = _as_id(user)
+    if uid is None:          # e.g. the admin login — not a tracked learner
         return
-    table,row = initdata(data, user)
-    set_cell(table,user,name,value)
+    table,row = initdata(data, uid)
+    set_cell(table,uid,name,value)
     save_data(data,table)
 
 def done_module(data, user,name):

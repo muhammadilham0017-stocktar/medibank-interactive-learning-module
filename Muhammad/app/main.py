@@ -36,6 +36,7 @@ from app.pipeline import (Retriever, safety_gate, GATE_RESPONSE, NURSE_LINE,
                           crisis_check, CRISIS_RESPONSE, EMERGENCY_RESPONSE,
                           wellbeing_check, WELLBEING_RESPONSE)
 from app.generate import answer as generate_answer
+from app import multilingual as ml   # Dimi: 5-language support (wraps this chatbot)
 
 from app.paths import DATA
 DB = DATA / "interactions.db"
@@ -90,6 +91,9 @@ div[data-testid="stChatInput"] textarea{border-radius:0}
 .cmp .theirs{background:var(--amber-soft);border-left:1px solid var(--line)}
 .cmp .theirs .val{color:var(--amber)}
 .privnote{font-size:.74rem;color:var(--ink-2);margin:.6rem 0 0;line-height:1.5}
+/* hide Streamlit's "Press Enter to submit form" hint inside the widget form,
+   so it doesn't collide with the placeholder in the narrow input */
+div[data-testid="stForm"] div[data-testid="InputInstructions"]{display:none}
 </style>
 """
 
@@ -357,6 +361,14 @@ def log_prompt(raw, corrected, expanded, topic, confidence, product,
 
 
 def _record(kind, text, passages=None):
+    # Dimi: show the answer in the student's language. English is left exactly
+    # as this chatbot produced it; other languages use the approved/translated
+    # version. Any failure falls back to the English text (never breaks the answer).
+    try:
+        if ml.current() != "en":
+            text = ml.localise(kind, text, passages)
+    except Exception:
+        pass
     _LAST_RENDER["kind"] = kind
     _LAST_RENDER["text"] = text
     _LAST_RENDER["passages"] = passages
@@ -434,7 +446,8 @@ def ask(question, product, page_name, show_analysis=True):
     Flesch-Kincaid reading grades, and the prompt-processing breakdown).
     Students see a clean answer; admins see the analysis."""
     # Tier 1 runs before the wellbeing and clinical checks.
-    tier = crisis_check(question)
+    # ml.extra_* check the ORIGINAL words in all 5 languages (set by ml.prepare).
+    tier = ml.extra_crisis() or crisis_check(question)   # Dimi
     if tier == "crisis":
         log("crisis", 1.0, page_name, "lifeline", routed=1)
         st.error(md_safe(_record("crisis", CRISIS_RESPONSE)))
@@ -444,15 +457,20 @@ def ask(question, product, page_name, show_analysis=True):
         st.error(md_safe(_record("crisis", EMERGENCY_RESPONSE)))
         return
 
-    if wellbeing_check(question):
+    if ml.extra_wellbeing() or wellbeing_check(question):   # Dimi
         log("wellbeing", 1.0, page_name, "support_line", routed=1)
         st.info(md_safe(_record("wellbeing", WELLBEING_RESPONSE)))
         return
 
-    blocked, term = safety_gate(question)
+    blocked, term = ml.extra_gate() or safety_gate(question)   # Dimi
     if blocked:
         log("clinical", 1.0, page_name, "nurse_line", routed=1)
         st.error(md_safe(_record("gate", GATE_RESPONSE)))
+        return
+
+    reply = ml.small_talk()   # Dimi: hello / thanks / not understood, in the student's language
+    if reply:
+        st.info(md_safe(_record("wellbeing", reply)))
         return
 
     r = load_retriever()
@@ -507,7 +525,7 @@ def ask(question, product, page_name, show_analysis=True):
                    f"Please call {NURSE_LINE}."))
         log("unmatched", confidence, page_name, "below_threshold")
         return
-    topic = passages[0]["section"]
+    topic = ml.topic_hint() or passages[0]["section"]   # Dimi: topic model picks the approved answer
     # Fallback answers must be product specific. Keying on topic
     # alone would give an Essentials member the Comprehensive answer
     # whenever generation fails.
@@ -555,6 +573,15 @@ SUGGESTIONS = [
 ]
 
 
+def _loc(key, english):
+    """Dimi: English keeps the original wording; other languages use the
+    localized string. Any failure falls back to English."""
+    try:
+        return english if ml.current() == "en" else ml.ui(key)
+    except Exception:
+        return english
+
+
 def assistant(page_name, show_analysis=True, widget=False):
     """A chat rather than a form. History stays in session state, so a
     student can see what they already asked. Answers reference each other,
@@ -570,6 +597,31 @@ def assistant(page_name, show_analysis=True, widget=False):
 
     if key not in st.session_state:
         st.session_state[key] = []
+
+    # Dimi: 5-language picker + page translation. Full page only; the compact
+    # widget gets a small language dropdown instead (below).
+    if not widget:
+        try:
+            ml.language_bar(page_name)
+        except Exception:
+            pass
+    else:
+        # Compact language picker for the widget. Auto-detect still runs on send;
+        # this lets a student set a language directly when a short mixed phrase
+        # (e.g. "sakit gigi cover?") falls just under the detection threshold.
+        try:
+            from app.chat_language import LANGS, LANG_NAMES
+            _cur = ml.current()
+            _pick = st.selectbox(
+                "Language", LANGS,
+                index=LANGS.index(_cur) if _cur in LANGS else 0,
+                format_func=lambda c: LANG_NAMES[c],
+                key=page_name + "_wlang", label_visibility="collapsed")
+            if _pick != _cur:
+                st.session_state[ml.LANG_KEY] = _pick
+                st.rerun()
+        except Exception:
+            pass
 
     # replay the transcript
     for turn in st.session_state[key]:
@@ -590,16 +642,18 @@ def assistant(page_name, show_analysis=True, widget=False):
     # suggestions only while the chat is empty
     if not st.session_state[key]:
         if widget:
-            st.caption("Ask what your cover includes. For medical advice I will "
-                       "put you through to a nurse instead.")
+            st.caption(_loc("intro",
+                       "Ask what your cover includes. For medical advice I will "
+                       "put you through to a nurse instead."))
         else:
-            st.caption(
+            st.caption(_loc("intro",
                 "Ask what your cover includes. Every answer comes from your own "
                 "policy documents, and you can open the exact wording it came "
                 "from. If you need medical advice I will put you through to a "
-                "nurse instead.")
-            cols = st.columns(len(SUGGESTIONS))
-            for col, text in zip(cols, SUGGESTIONS):
+                "nurse instead."))
+            suggs = SUGGESTIONS if ml.current() == "en" else ml.suggestions()
+            cols = st.columns(len(suggs))
+            for col, text in zip(cols, suggs):
                 if col.button(text, key=page_name + "_sug_" + text,
                               use_container_width=True):
                     st.session_state[key + "_pending"] = text
@@ -613,13 +667,14 @@ def assistant(page_name, show_analysis=True, widget=False):
             c_in, c_go = st.columns([5, 1])
             typed = c_in.text_input("Ask about your cover",
                                     key=page_name + "_tin",
-                                    placeholder="Type your message",
+                                    placeholder=_loc("placeholder", "Type your message"),
                                     label_visibility="collapsed")
             sent = c_go.form_submit_button("➤", use_container_width=True)
         if not sent:
             typed = None
     else:
-        typed = st.chat_input("Ask about your cover", key=page_name + "_input")
+        typed = st.chat_input(_loc("placeholder", "Ask about your cover"),
+                              key=page_name + "_input")
     pending = st.session_state.pop(key + "_pending", None)
     question = typed or pending
 
@@ -628,17 +683,24 @@ def assistant(page_name, show_analysis=True, widget=False):
         with st.chat_message("user", avatar="\U0001F464"):
             st.markdown(question)
         with st.chat_message("assistant", avatar="\U0001F4C4"):
-            with st.spinner("Checking your policy documents"):
+            with st.spinner(_loc("spinner", "Checking your policy documents")):
                 _LAST_RENDER.clear()
-                ask(question,
+                try:
+                    english = ml.prepare(question)   # Dimi: detect language, return English query
+                except Exception:
+                    english = question
+                ask(english,
                     st.session_state.get("product", "comprehensive"),
                     page_name, show_analysis)
         st.session_state[key].append(
             ("assistant", _LAST_RENDER.get("text", ""),
              _LAST_RENDER.get("kind", "answer")))
+        if not widget:
+            ml.rerun_if_language_changed()   # Dimi: redraw in the detected language
 
-    st.caption("Please do not type personal health details. Medical "
-               "questions go to a nurse, not to this assistant.")
+    st.caption(_loc("footer",
+               "Please do not type personal health details. Medical "
+               "questions go to a nurse, not to this assistant."))
 
 def page_module():
     st.title("How healthcare works here")

@@ -24,8 +24,8 @@ DEMO_ADMIN_PASSWORD = "oshcwise-demo"
 # Prototype accounts (one shared login per role). Change them here for now.
 # A real version should use single sign-on instead of passwords in the code.
 USERS = {
-    "student": {"username": "12345678", "password": "123456"},
-    "admin": {"username": "Admin", "password": "123456"},
+    "student": {"username": "student", "password": "123456"},
+    "admin": {"username": "admin", "password": "123456"},
 }
 
 def check_login(role: str, username: str, password: str) -> bool:
